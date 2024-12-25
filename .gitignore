@@ -1,0 +1,8 @@
+# directory containing binary files
+bin
+# directory containing object files
+obj
+# files related to the CodeBlock project
+*.cbp
+*.depend
+*.layout

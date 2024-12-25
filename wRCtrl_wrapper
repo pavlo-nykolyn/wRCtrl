@@ -1,0 +1,59 @@
+# Author: Pavlo Nykolyn
+# wraps wRCtrl in order to both toggle on and toggle of a relay;
+# uses an awk script to parse a list of input arguments separated by semi-colons;
+# the format of the list is:
+# <IPv4>;[<port>];<model>
+# currently, <port> is necessary only for the NC800;
+# the first argument is the configuration of the controller;
+# the second argument is the relay ID (currently, it belongs to the interval [1, 8])
+logfile="${HOME}/relay_controller.log"
+
+myLogger ()
+{
+   # the first positional argument should be a prefix, indicating the message type
+   # the second positional argument is the message itself
+   echo "{$(date +'%Y-%m-%d %H:%M:%S')} ${1} ${2}"
+} >> "${logfile}"
+
+if [ $# -ne 2 ]
+then
+   myLogger '[ERR]' 'exactly two arguments are expected'
+fi
+
+parse_res="$(echo "${1}" | awk -v 'FS=;' -f parse_wRCtrl.awk)"
+if [ -n "${parse_res}" ]
+then
+   err=$(echo "${parse_res}" | tr --delete '[[:space:]]' | cut '--delimiter=:' '--fields=2')
+   msg=
+   case "${err}"
+   in
+      1) msg='only three arguments shall be supplied' ;;
+      2) msg='the format of the IPv4 address is not correct' ;;
+      3) msg='either the format or the value of the port is not correct' ;;
+      4) msg='the model of the web relay controller is not supported' ;;
+   esac
+   myLogger 'ERR' "${msg}"
+   exit 1
+fi
+
+parse_id=$(echo "${2}" | sed -n '/^[1-8]$/p')
+if [ -z "${parse_id}" ]
+then
+   myLogger '[ERR]' "${2} does not belong to the interval [1, 8]"
+fi
+
+ip_address=$(echo "${1}" | cut '--delimiter=;' '--fields=1')
+port=$(echo "${1}" | cut '--delimiter=;' '--fields=2')
+model=$(echo "${1}" | cut '--delimiter=;' '--fields=3')
+# creating the configuration option list
+option_list="--behaviour=single --ipv4=${ip_address} --model=${model}"
+if [ "${model}" = 'NC800' ]
+then
+   option_list="${option_list} --port=${port}"
+fi
+
+myLogger '[INF]' "turning on relay ${2} of ${ip_address} ..."
+./wRCtrl "${option_list}" "--mnemonic-code=t_on_${2}" >> "${logfile}"
+sleep 10s
+myLogger '[INF]' "turning off relay ${2} of ${ip_address} ..."
+./wRCtrl "${option_list}" "--mnemonic-code=t_off_${2}" >> "${logfile}"
