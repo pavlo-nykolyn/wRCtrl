@@ -1,0 +1,5 @@
+# Author: Pavlo Nykolyn
+apiVersion: v1
+kind: Namespace
+metadata:
+   name: utility-objects

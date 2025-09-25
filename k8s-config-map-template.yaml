@@ -1,0 +1,13 @@
+# Author: Pavlo Nykolyn
+apiVersion: v1
+kind: ConfigMap
+metadata:
+   name:
+   namespace: utility-objects
+data:
+   # the configuration for the array of relays shall follow the following format:
+   # <ip-address>;[<port>];<model>
+   relay-array-configuration:
+   # each relay ID shall belong to the interval [1, 8]. The sequence shall be defined
+   # as <id>{ <id>}. At least one element shall belong to the sequence
+   ids:

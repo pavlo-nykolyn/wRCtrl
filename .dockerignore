@@ -1,0 +1,15 @@
+# Code::Blocks project-related files
+*.cbp
+*.layout
+*.depend
+# directory containing object files (there is no need to include them in the read-only layers)
+obj
+# directory containing binary files
+bin
+# project-related documentation and license files
+LICENSE.md
+README.md
+# this script is used either in a physical or a virtual machine
+wRCtrl_wrapper
+# all Kubernetes object configuration
+k8s-*

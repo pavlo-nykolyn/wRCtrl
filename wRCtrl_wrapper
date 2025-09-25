@@ -4,9 +4,16 @@
 # the format of the list is:
 # <IPv4>;[<port>];<model>
 # currently, <port> is necessary only for the NC800;
-# the first argument is the configuration of the controller;
-# the second argument is the relay ID (currently, it belongs to the interval [1, 8])
-logfile="${HOME}/relay_controller.log"
+# the first argument is the path to the directory that will contain the log files;
+# the second argument is the configuration of the controller;
+# the third argument is the relay ID (currently, it belongs to the interval [1, 8])
+logpath="${1}"
+if [ ! -d "${logpath}" ]
+then
+   # currently the log files are mandatory
+   exit 1
+fi
+logfile="${logpath}/relay_controller.txt"
 
 myLogger ()
 {
@@ -15,12 +22,13 @@ myLogger ()
    echo "{$(date +'%Y-%m-%d %H:%M:%S')} ${1} ${2}"
 } >> "${logfile}"
 
-if [ $# -ne 2 ]
+if [ $# -ne 3 ]
 then
-   myLogger '[ERR]' 'exactly two arguments are expected'
+   myLogger '[ERR]' 'exactly three arguments are expected'
+   exit 1
 fi
 
-parse_res="$(echo "${1}" | awk -v 'FS=;' -f parse_wRCtrl.awk)"
+parse_res="$(echo "${2}" | awk -v 'FS=;' -f parse_wRCtrl.awk)"
 if [ -n "${parse_res}" ]
 then
    err=$(echo "${parse_res}" | tr --delete '[[:space:]]' | cut '--delimiter=:' '--fields=2')
@@ -32,19 +40,19 @@ then
       3) msg='either the format or the value of the port is not correct' ;;
       4) msg='the model of the web relay controller is not supported' ;;
    esac
-   myLogger 'ERR' "${msg}"
+   myLogger '[ERR]' "${msg}"
    exit 1
 fi
 
-parse_id=$(echo "${2}" | sed -n '/^[1-8]$/p')
+parse_id=$(echo "${3}" | sed -n '/^[1-8]$/p')
 if [ -z "${parse_id}" ]
 then
-   myLogger '[ERR]' "${2} does not belong to the interval [1, 8]"
+   myLogger '[ERR]' "${3} does not belong to the interval [1, 8]"
 fi
 
-ip_address=$(echo "${1}" | cut '--delimiter=;' '--fields=1')
-port=$(echo "${1}" | cut '--delimiter=;' '--fields=2')
-model=$(echo "${1}" | cut '--delimiter=;' '--fields=3')
+ip_address=$(echo "${2}" | cut '--delimiter=;' '--fields=1')
+port=$(echo "${2}" | cut '--delimiter=;' '--fields=2')
+model=$(echo "${2}" | cut '--delimiter=;' '--fields=3')
 # creating the configuration option list
 option_list="--behaviour=single --ipv4=${ip_address} --model=${model}"
 if [ "${model}" = 'NC800' ]
@@ -52,8 +60,8 @@ then
    option_list="${option_list} --port=${port}"
 fi
 
-myLogger '[INF]' "turning on relay ${2} of ${ip_address} ..."
-./wRCtrl "${option_list}" "--mnemonic-code=t_on_${2}" >> "${logfile}"
+myLogger '[INF]' "turning on relay ${3} of ${ip_address} ..."
+./bin/wRCtrl ${option_list} "--mnemonic-code=t_on_${3}" >> "${logfile}"
 sleep 10s
-myLogger '[INF]' "turning off relay ${2} of ${ip_address} ..."
-./wRCtrl "${option_list}" "--mnemonic-code=t_off_${2}" >> "${logfile}"
+myLogger '[INF]' "turning off relay ${3} of ${ip_address} ..."
+./bin/wRCtrl ${option_list} "--mnemonic-code=t_off_${3}" >> "${logfile}"
